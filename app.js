@@ -382,6 +382,8 @@ function startTraining(resume) {
     loadScenario(currentScenario);
   } else {
     showScreen('intro');
+    // Build caption DOM now that selectedVoice is known
+    buildCaptionDOM();
   }
 }
 
@@ -424,6 +426,366 @@ function startTraining(resume) {
     s = Math.floor(s || 0);
     return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
   }
+})();
+
+/* ============================================================
+   WORD-LEVEL CAPTION ENGINE
+   Shows live karaoke-style captions in the intro screen
+   caption panel, synced word-by-word to the narration audio.
+   ============================================================ */
+
+// Word arrays: [start_time, "word"]
+const ALEX_WORDS = [
+  [0.12,"Welcome"],[0.54,"to"],[0.66,"the"],[0.82,"scenario-based"],[1.89,"documentation"],[2.80,"exercise"],
+  [3.90,"for"],[4.16,"Sunny"],[4.56,"Day"],[5.04,"Residential"],[5.72,"Group."],[6.76,"My"],
+  [6.92,"name"],[7.08,"is"],[7.28,"Alex,"],[7.96,"and"],[8.08,"I'll"],[8.22,"be"],
+  [8.38,"guiding"],[8.78,"you"],[8.92,"through"],[9.08,"this"],[9.28,"training"],[9.62,"today."],
+  [10.76,"Documentation"],[11.72,"is"],[11.90,"one"],[12.00,"of"],[12.08,"the"],[12.22,"most"],
+  [12.44,"important"],[12.98,"responsibilities"],[13.92,"you"],[14.08,"carry"],[14.86,"as"],[15.02,"a"],
+  [15.12,"direct"],[15.50,"care"],[15.72,"professional."],[17.16,"Every"],[17.56,"note"],[17.90,"you"],
+  [18.03,"write"],[18.34,"becomes"],[18.74,"part"],[18.92,"of"],[19.14,"a"],[19.16,"resident's"],
+  [19.69,"clinical"],[20.12,"record."],[21.14,"It"],[21.32,"supports"],[21.79,"treatment"],[22.20,"decisions,"],
+  [23.35,"demonstrates"],[24.10,"medical"],[24.48,"necessity,"],[25.64,"and"],[25.78,"protects"],[26.30,"both"],
+  [26.50,"the"],[26.68,"resident"],[27.42,"and"],[27.72,"your"],[27.92,"organization"],[28.86,"during"],
+  [29.24,"audits"],[29.82,"or"],[29.97,"reviews."],[31.16,"This"],[31.42,"training"],[31.80,"will"],
+  [31.98,"walk"],[32.24,"you"],[32.40,"through"],[32.80,"eleven"],[33.60,"real-life"],[34.10,"scenarios"],
+  [35.24,"that"],[35.44,"happen"],[36.00,"right"],[36.30,"here"],[36.46,"in"],[36.60,"Level"],
+  [36.90,"Three"],[37.16,"residential"],[37.74,"settings."],[38.86,"For"],[39.06,"each"],[39.36,"one,"],
+  [39.78,"you'll"],[39.96,"read"],[40.11,"the"],[40.26,"situation,"],[41.42,"then"],[41.56,"write"],
+  [41.80,"a"],[41.90,"professional"],[42.64,"shift"],[42.96,"note"],[43.48,"in"],[43.62,"your"],
+  [43.78,"own"],[44.00,"words."],[45.08,"Your"],[45.28,"note"],[45.60,"will"],[45.76,"be"],
+  [45.88,"evaluated"],[46.72,"against"],[47.08,"a"],[47.16,"clinical"],[47.64,"rubric."],[48.78,"To"],
+  [48.86,"pass"],[49.24,"each"],[49.41,"scenario,"],[50.32,"you"],[50.44,"need"],[50.55,"a"],
+  [50.70,"score"],[51.12,"of"],[51.38,"eight"],[51.70,"out"],[51.82,"of"],[51.98,"ten."],
+  [52.98,"If"],[53.10,"you"],[53.30,"don't"],[53.54,"reach"],[53.86,"that,"],[54.22,"you'll"],
+  [54.36,"receive"],[54.80,"feedback"],[55.52,"and"],[55.68,"have"],[55.88,"the"],[56.04,"opportunity"],
+  [57.00,"to"],[57.14,"revise"],[57.82,"and"],[57.96,"resubmit."],[59.20,"Let's"],[59.43,"talk"],
+  [59.70,"about"],[59.96,"what"],[60.20,"makes"],[60.46,"a"],[60.62,"good"],[60.84,"documentation"],
+  [61.76,"note."],[62.76,"A"],[62.90,"strong"],[63.24,"note"],[63.52,"includes"],[64.12,"six"],
+  [64.38,"things."],[65.42,"First,"],[66.34,"resident"],[66.84,"presentation"],[67.60,"upon"],[67.92,"arrival"],
+  [68.84,"or"],[68.98,"at"],[69.06,"the"],[69.22,"start"],[69.42,"of"],[69.52,"the"],
+  [69.64,"situation."],[71.14,"Second,"],[72.02,"the"],[72.20,"specific"],[72.80,"behaviors"],[73.38,"you"],
+  [73.48,"observed"],[74.33,"described"],[74.92,"in"],[75.04,"objective"],[75.56,"language."],[76.78,"Third,"],
+  [77.63,"the"],[77.80,"interventions"],[78.48,"you"],[78.59,"used"],[78.92,"as"],[79.03,"staff."],
+  [80.40,"Fourth,"],[81.30,"how"],[81.54,"the"],[81.70,"resident"],[82.20,"responded"],[82.90,"to"],
+  [83.02,"those"],[83.26,"interventions."],[84.80,"Fifth,"],[85.74,"how"],[85.88,"the"],[86.06,"shift"],
+  [86.42,"or"],[86.58,"situation"],[87.46,"ended."],[88.38,"And"],[88.68,"sixth,"],[89.44,"continued"],
+  [90.10,"treatment"],[90.50,"needs"],[90.98,"or"],[91.22,"any"],[91.44,"progress"],[92.00,"noted."],
+  [93.22,"What"],[93.38,"you"],[93.56,"want"],[93.70,"to"],[93.84,"avoid"],[94.38,"is"],
+  [94.58,"vague,"],[95.16,"subjective"],[95.72,"language."],[96.82,"Phrases"],[97.28,"like,"],[97.73,"'Client"],
+  [98.18,"was"],[98.36,"acting"],[98.65,"out,'"],[99.50,"'She"],[99.72,"had"],[99.83,"a"],
+  [99.96,"bad"],[100.21,"day,'"],[101.06,"or,"],[101.51,"'Everything"],[101.98,"was"],[102.20,"fine,'"],
+  [103.10,"tell"],[103.30,"us"],[103.60,"nothing"],[104.02,"clinically"],[104.54,"useful."],[105.58,"Instead,"],
+  [106.12,"describe"],[106.56,"exactly"],[107.28,"what"],[107.46,"you"],[107.66,"saw"],[108.20,"and"],
+  [108.36,"what"],[108.56,"you"],[108.70,"did."],[109.65,"Now"],[109.82,"let's"],[110.03,"walk"],
+  [110.30,"through"],[110.45,"the"],[110.60,"eleven"],[111.00,"scenarios"],[111.68,"you'll"],[111.82,"encounter"],
+  [112.28,"in"],[112.36,"this"],[112.54,"training."],[113.64,"Scenario"],[114.28,"one"],[114.68,"is"],
+  [114.82,"emotional"],[115.42,"dysregulation"],[116.26,"after"],[116.50,"school."],[117.62,"A"],[117.72,"resident"],
+  [118.22,"returns"],[118.72,"home"],[119.16,"visibly"],[119.59,"upset,"],[120.70,"slams"],[121.20,"belongings,"],
+  [122.28,"yells,"],[123.08,"and"],[123.24,"throws"],[123.62,"items"],[123.92,"in"],[124.04,"her"],
+  [124.24,"room."],[125.34,"Staff"],[125.66,"respond"],[126.22,"with"],[126.46,"calm"],[127.12,"de-escalation,"],
+  [128.51,"coping"],[128.98,"skill"],[129.28,"support,"],[130.26,"and"],[130.36,"the"],[130.50,"resident"],
+  [131.00,"eventually"],[131.62,"stabilizes"],[132.54,"and"],[132.70,"completes"],[133.24,"her"],[133.44,"evening"],
+  [133.78,"routine."],[135.38,"Scenario"],[135.92,"two"],[136.32,"is"],[136.44,"refusal"],[137.00,"to"],
+  [137.14,"shower."],[138.40,"A"],[138.55,"resident"],[139.04,"refuses"],[139.70,"to"],[139.82,"complete"],
+  [140.32,"hygiene"],[140.98,"as"],[141.16,"part"],[141.34,"of"],[141.44,"the"],[141.62,"evening"],
+  [141.92,"routine."],[143.22,"Staff"],[143.56,"use"],[143.80,"prompting,"],[144.74,"motivational"],[145.46,"strategies,"],
+  [146.26,"and"],[146.44,"redirection."],[147.92,"Your"],[148.10,"note"],[148.42,"must"],[148.66,"capture"],
+  [149.01,"the"],[149.16,"refusal,"],[150.24,"the"],[150.34,"approach"],[150.92,"used,"],[151.64,"and"],
+  [151.76,"the"],[151.92,"outcome."],[153.20,"Scenario"],[153.78,"three"],[154.22,"is"],[154.56,"argument"],
+  [155.14,"over"],[155.44,"phone"],[155.74,"privileges."],[157.04,"A"],[157.14,"resident"],[157.62,"becomes"],
+  [158.12,"agitated"],[158.74,"when"],[158.94,"phone"],[159.24,"time"],[159.50,"is"],[159.68,"limited."],
+  [160.71,"The"],[160.90,"situation"],[161.68,"escalates"],[162.26,"verbally"],[162.74,"before"],[163.12,"de-escalating."],
+  [164.46,"Staff"],[164.88,"must"],[165.10,"document"],[165.58,"the"],[165.72,"trigger,"],[166.60,"the"],
+  [166.70,"behavior,"],[167.78,"the"],[167.90,"intervention,"],[168.92,"and"],[169.04,"the"],[169.14,"resolution."],
+  [170.68,"Scenario"],[171.30,"four"],[171.64,"is"],[171.92,"theft"],[172.43,"from"],[172.66,"a"],
+  [172.76,"peer."],[174.02,"Staff"],[174.32,"discover"],[174.82,"a"],[174.92,"resident"],[175.40,"took"],
+  [175.68,"items"],[176.02,"belonging"],[176.52,"to"],[176.64,"another"],[176.98,"resident."],[178.03,"This"],
+  [178.24,"requires"],[178.80,"documenting"],[179.47,"the"],[179.62,"discovery,"],[180.74,"the"],[180.92,"confrontation,"],
+  [182.40,"the"],[182.56,"resident's"],[183.10,"response,"],[184.24,"and"],[184.52,"any"],[184.80,"corrective"],
+  [185.42,"or"],[185.60,"therapeutic"],[186.36,"action"],[186.76,"taken."],[187.20,"Scenario"],[187.86,"five"],
+  [188.26,"is"],[188.64,"running"],[188.92,"away"],[189.20,"threats."],[190.32,"A"],[190.48,"resident"],
+  [190.99,"threatens"],[191.42,"to"],[191.56,"run"],[191.72,"away"],[192.04,"during"],[192.36,"a"],
+  [192.42,"conflict."],[193.76,"Staff"],[194.18,"implement"],[194.74,"safety"],[195.12,"protocols,"],[196.38,"de-escalate"],
+  [197.06,"the"],[197.20,"situation,"],[198.33,"and"],[198.46,"the"],[198.60,"resident"],[199.14,"does"],
+  [199.48,"not"],[199.78,"leave"],[199.99,"the"],[200.16,"facility."],[201.48,"Documentation"],[202.70,"must"],
+  [202.94,"reflect"],[203.40,"safety"],[203.76,"considerations"],[204.88,"clearly."],[206.62,"Scenario"],[207.22,"six"],
+  [207.52,"is"],[207.72,"staff"],[208.02,"shift"],[208.31,"manipulation."],[209.82,"A"],[210.04,"resident"],
+  [210.54,"attempts"],[210.96,"to"],[211.10,"play"],[211.38,"staff"],[211.76,"members"],[212.22,"against"],
+  [212.62,"each"],[212.84,"other"],[213.50,"by"],[213.68,"reporting"],[214.28,"inconsistent"],[215.06,"information"],
+  [215.90,"across"],[216.51,"shift"],[216.80,"changes."],[217.98,"Documentation"],[218.92,"must"],[219.20,"capture"],
+  [219.62,"the"],[219.80,"specific"],[220.40,"statements"],[220.90,"made"],[221.61,"and"],[221.78,"how"],
+  [222.04,"staff"],[222.30,"addressed"],[222.72,"it."],[224.07,"Scenario"],[224.68,"seven"],[225.02,"is"],
+  [225.24,"bedtime"],[225.74,"defiance."],[227.04,"A"],[227.20,"resident"],[227.70,"refuses"],[228.28,"to"],
+  [228.44,"follow"],[228.70,"the"],[228.86,"bedtime"],[229.30,"routine,"],[230.36,"becomes"],[230.92,"argumentative,"],
+  [232.11,"and"],[232.28,"disrupts"],[233.00,"other"],[233.22,"residents."],[234.54,"Staff"],[234.96,"implement"],
+  [235.56,"structured"],[236.20,"limit"],[236.50,"setting."],[237.46,"Your"],[237.64,"note"],[237.92,"must"],
+  [238.20,"capture"],[238.55,"the"],[238.72,"progression"],[239.52,"and"],[239.68,"resolution."],[241.42,"Scenario"],
+  [242.08,"eight"],[242.34,"is"],[242.54,"peer"],[242.82,"bullying."],[243.90,"A"],[244.06,"resident"],
+  [244.58,"is"],[244.74,"observed"],[245.20,"making"],[245.54,"derogatory"],[246.38,"comments"],[246.88,"toward"],
+  [247.06,"a"],[247.18,"peer."],[248.14,"Staff"],[248.52,"intervene,"],[249.54,"separate"],[250.06,"residents,"],
+  [251.08,"and"],[251.20,"address"],[251.64,"behavior"],[252.32,"therapeutically."],[253.74,"Both"],[254.04,"residents"],
+  [254.54,"require"],[254.98,"documentation."],[256.82,"Scenario"],[257.48,"nine"],[257.98,"is"],[258.11,"a"],
+  [258.23,"panic"],[258.60,"attack."],[259.70,"A"],[259.92,"resident"],[260.46,"experiences"],[261.26,"acute"],
+  [261.82,"anxiety"],[262.48,"with"],[262.64,"physical"],[263.04,"symptoms,"],[264.22,"rapid"],[264.64,"breathing,"],
+  [265.54,"tearfulness,"],[266.58,"and"],[266.86,"inability"],[267.46,"to"],[267.66,"speak."],[268.80,"Staff"],
+  [269.18,"implement"],[269.84,"calming"],[270.24,"strategies"],[271.04,"and"],[271.20,"monitor"],[271.64,"for"],
+  [271.82,"safety."],[272.85,"This"],[273.08,"scenario"],[273.70,"requires"],[274.34,"clear"],[275.16,"clinical"],
+  [275.60,"description"],[276.18,"of"],[276.34,"physical"],[276.94,"and"],[277.08,"behavioral"],[277.66,"presentation."],
+  [279.49,"Scenario"],[280.14,"ten"],[280.56,"is"],[280.74,"a"],[280.78,"family"],[281.12,"call"],
+  [281.33,"meltdown."],[282.56,"A"],[282.68,"resident"],[283.22,"becomes"],[283.74,"highly"],[284.18,"dysregulated"],
+  [285.02,"following"],[285.48,"a"],[285.50,"phone"],[285.80,"call"],[286.30,"with"],[286.39,"a"],
+  [286.52,"family"],[286.90,"member."],[287.98,"Staff"],[288.30,"support"],[288.71,"the"],[288.88,"resident"],
+  [289.37,"through"],[289.66,"significant"],[290.44,"emotional"],[291.00,"distress."],[292.22,"Documentation"],[293.26,"must"],
+  [293.52,"capture"],[293.90,"the"],[294.06,"timeline,"],[295.10,"the"],[295.24,"trigger,"],[296.06,"and"],
+  [296.16,"the"],[296.32,"full"],[296.58,"staff"],[296.84,"response."],[298.38,"Scenario"],[299.00,"eleven"],
+  [299.54,"is"],[299.68,"an"],[299.92,"excellent"],[300.42,"progress"],[300.94,"day."],[301.90,"A"],
+  [302.08,"resident"],[302.62,"demonstrates"],[303.24,"exceptional"],[304.08,"emotional"],[304.64,"regulation,"],[305.90,"positive"],
+  [306.44,"peer"],[306.70,"interaction,"],[307.80,"and"],[307.94,"engagement"],[308.66,"with"],[308.86,"programming"],
+  [309.58,"throughout"],[309.94,"the"],[310.08,"shift."],[311.22,"Even"],[311.60,"positive"],[312.12,"days"],
+  [312.44,"require"],[312.96,"thorough"],[313.32,"documentation"],[314.62,"to"],[314.78,"support"],[315.30,"treatment"],
+  [315.70,"progress."],[316.98,"Remember,"],[317.92,"every"],[318.28,"scenario"],[318.98,"you"],[319.12,"document"],
+  [319.74,"here"],[320.40,"reflects"],[320.90,"your"],[321.06,"professional"],[321.70,"skill"],[322.50,"and"],
+  [322.64,"your"],[322.84,"commitment"],[323.39,"to"],[323.54,"the"],[323.68,"residents"],[324.12,"in"],
+  [324.24,"your"],[324.42,"care."],[325.38,"When"],[325.54,"you're"],[325.70,"ready,"],[326.30,"let's"],
+  [326.54,"begin"],[326.94,"scenario"],[327.49,"one."]
+];
+
+const SARAH_WORDS = [
+  [0.10,"Welcome"],[0.52,"to"],[0.64,"the"],[0.74,"scenario-based"],[1.72,"documentation"],[2.50,"exercise"],
+  [3.14,"for"],[3.32,"Sunny"],[3.66,"Day"],[3.90,"Residential"],[4.46,"Group."],[5.38,"My"],
+  [5.54,"name"],[5.68,"is"],[5.84,"Sarah,"],[6.48,"and"],[6.58,"I'll"],[6.70,"be"],
+  [6.84,"guiding"],[7.16,"you"],[7.30,"through"],[7.52,"this"],[7.72,"training"],[8.04,"today."],
+  [9.22,"Documentation"],[10.18,"is"],[10.32,"one"],[10.42,"of"],[10.54,"the"],[10.68,"most"],
+  [10.98,"important"],[11.46,"responsibilities"],[12.31,"you"],[12.48,"carry"],[12.82,"as"],[12.94,"a"],
+  [13.01,"direct"],[13.38,"care"],[13.58,"professional."],[15.02,"Every"],[15.32,"note"],[15.56,"you"],
+  [15.67,"write"],[16.06,"becomes"],[16.46,"part"],[16.68,"of"],[16.80,"a"],[16.90,"resident's"],
+  [17.40,"clinical"],[17.80,"record."],[18.90,"It"],[19.04,"supports"],[19.53,"treatment"],[19.79,"decisions,"],
+  [20.77,"demonstrates"],[21.40,"medical"],[21.72,"necessity,"],[22.80,"and"],[22.94,"protects"],[23.42,"both"],
+  [23.62,"the"],[23.74,"resident"],[24.38,"and"],[24.56,"your"],[24.70,"organization"],[25.40,"during"],
+  [25.72,"audits"],[26.06,"or"],[26.18,"reviews."],[27.70,"This"],[27.90,"training"],[28.30,"will"],
+  [28.44,"walk"],[28.70,"you"],[28.84,"through"],[29.11,"eleven"],[29.76,"real-life"],[30.24,"scenarios"],
+  [31.14,"that"],[31.32,"happen"],[31.70,"right"],[31.96,"here"],[32.26,"in"],[32.40,"level"],
+  [32.70,"three"],[33.00,"residential"],[33.60,"settings."],[34.90,"For"],[35.06,"each"],[35.34,"one,"],
+  [35.92,"you'll"],[36.08,"read"],[36.26,"the"],[36.38,"situation,"],[37.52,"then"],[37.74,"write"],
+  [37.96,"a"],[38.04,"professional"],[38.60,"shift"],[38.92,"note"],[39.14,"in"],[39.26,"your"],
+  [39.42,"own"],[39.60,"words."],[40.92,"Your"],[41.07,"note"],[41.36,"will"],[41.48,"be"],
+  [41.60,"evaluated"],[42.30,"against"],[42.62,"a"],[42.70,"clinical"],[43.12,"rubric."],[44.20,"To"],
+  [44.36,"pass"],[44.72,"each"],[44.92,"scenario,"],[45.90,"you"],[46.00,"need"],[46.14,"a"],
+  [46.26,"score"],[46.58,"of"],[46.84,"eight"],[47.10,"out"],[47.20,"of"],[47.34,"ten."],
+  [48.38,"If"],[48.52,"you"],[48.62,"don't"],[48.90,"reach"],[49.11,"that,"],[49.78,"you'll"],
+  [49.92,"receive"],[50.30,"feedback"],[51.12,"and"],[51.26,"have"],[51.46,"the"],[51.62,"opportunity"],
+  [52.24,"to"],[52.36,"revise"],[52.90,"and"],[53.06,"resubmit."],[54.56,"Let's"],[54.82,"talk"],
+  [55.06,"about"],[55.32,"what"],[55.52,"makes"],[55.78,"a"],[55.88,"good"],[56.08,"documentation"],
+  [56.84,"note."],[58.00,"A"],[58.14,"strong"],[58.48,"note"],[58.74,"includes"],[59.22,"six"],
+  [59.52,"things."],[60.62,"First,"],[61.48,"resident"],[61.90,"presentation"],[62.54,"upon"],[62.82,"arrival"],
+  [63.64,"or"],[63.80,"at"],[63.92,"the"],[64.06,"start"],[64.26,"of"],[64.36,"the"],
+  [64.46,"situation."],[66.08,"Second,"],[66.90,"the"],[67.06,"specific"],[67.56,"behaviors"],[68.12,"you"],
+  [68.20,"observed"],[69.08,"described"],[69.62,"in"],[69.72,"objective"],[70.26,"language."],[71.72,"Third,"],
+  [72.56,"the"],[72.70,"interventions"],[73.28,"you"],[73.46,"used"],[73.70,"as"],[73.88,"staff."],
+  [75.26,"Fourth,"],[76.12,"how"],[76.32,"the"],[76.44,"resident"],[76.84,"responded"],[77.38,"to"],
+  [77.50,"those"],[77.70,"interventions."],[79.16,"Fifth,"],[80.04,"how"],[80.18,"the"],[80.34,"shift"],
+  [80.68,"or"],[80.84,"situation"],[81.44,"ended,"],[82.30,"and"],[82.56,"sixth,"],[83.48,"continued"],
+  [84.00,"treatment"],[84.36,"needs"],[84.80,"or"],[84.98,"any"],[85.18,"progress"],[85.72,"noted."],
+  [87.00,"What"],[87.18,"you"],[87.28,"want"],[87.48,"to"],[87.60,"avoid"],[88.08,"is"],
+  [88.34,"vague,"],[88.84,"subjective"],[89.36,"language."],[90.56,"Phrases"],[91.02,"like,"],[91.77,"'Client"],
+  [92.22,"was"],[92.44,"acting"],[92.80,"out,'"],[93.48,"'She"],[93.76,"had"],[93.94,"a"],
+  [93.96,"bad"],[94.24,"day,'"],[95.02,"or,"],[95.71,"'Everything"],[96.14,"was"],[96.32,"fine,'"],
+  [97.30,"tell"],[97.46,"us"],[97.68,"nothing"],[98.06,"clinically"],[98.52,"useful."],[99.74,"Instead,"],
+  [100.61,"describe"],[101.14,"exactly"],[101.73,"what"],[101.92,"you"],[102.10,"saw"],[102.55,"and"],
+  [102.74,"what"],[102.92,"you"],[103.06,"did."],[104.20,"Now,"],[104.38,"let's"],[104.60,"walk"],
+  [104.88,"through"],[105.11,"the"],[105.26,"eleven"],[105.68,"scenarios"],[106.26,"you'll"],[106.38,"encounter"],
+  [106.84,"in"],[106.94,"this"],[107.12,"training."],[108.28,"Scenario"],[108.88,"one"],[109.20,"is"],
+  [109.34,"emotional"],[109.90,"dysregulation"],[110.70,"after"],[111.04,"school."],[112.10,"A"],[112.22,"resident"],
+  [112.64,"returns"],[113.06,"home"],[113.40,"visibly"],[113.80,"upset,"],[114.74,"slams"],[115.14,"belongings,"],
+  [116.08,"yells,"],[116.94,"and"],[117.08,"throws"],[117.54,"items"],[117.82,"in"],[117.92,"her"],
+  [118.10,"room."],[119.30,"Staff"],[119.64,"respond"],[120.12,"with"],[120.34,"calm"],[120.68,"de-escalation,"],
+  [121.96,"coping"],[122.32,"skill"],[122.58,"support,"],[123.50,"and"],[123.62,"the"],[123.74,"resident"],
+  [124.18,"eventually"],[124.78,"stabilizes"],[125.62,"and"],[125.76,"completes"],[126.18,"her"],[126.36,"evening"],
+  [126.68,"routine."],[128.04,"Scenario"],[128.58,"two"],[129.02,"is"],[129.18,"refusal"],[129.70,"to"],
+  [129.82,"shower."],[131.02,"A"],[131.09,"resident"],[131.56,"refuses"],[132.08,"to"],[132.18,"complete"],
+  [132.58,"hygiene"],[133.12,"as"],[133.30,"part"],[133.46,"of"],[133.58,"the"],[133.72,"evening"],
+  [134.00,"routine."],[135.30,"Staff"],[135.72,"use"],[135.92,"prompting,"],[136.71,"motivational"],[137.38,"strategies,"],
+  [138.32,"and"],[138.48,"redirection."],[140.04,"Your"],[140.22,"note"],[140.54,"must"],[140.84,"capture"],
+  [141.22,"the"],[141.32,"refusal,"],[142.16,"the"],[142.30,"approach"],[142.80,"used,"],[143.46,"and"],
+  [143.60,"the"],[143.76,"outcome."],[145.21,"Scenario"],[145.80,"three"],[146.20,"is"],[146.41,"argument"],
+  [146.96,"over"],[147.22,"phone"],[147.48,"privileges."],[148.86,"A"],[148.94,"resident"],[149.40,"becomes"],
+  [149.84,"agitated"],[150.39,"when"],[150.60,"phone"],[150.84,"time"],[151.06,"is"],[151.20,"limited."],
+  [152.37,"The"],[152.52,"situation"],[153.20,"escalates"],[153.74,"verbally"],[154.20,"before"],[154.56,"de-escalating."],
+  [156.20,"Staff"],[156.60,"must"],[156.80,"document"],[157.28,"the"],[157.38,"trigger,"],[158.10,"the"],
+  [158.18,"behavior,"],[159.14,"the"],[159.28,"intervention,"],[160.24,"and"],[160.37,"the"],[160.42,"resolution."],
+  [162.16,"Scenario"],[162.72,"four"],[163.12,"is"],[163.34,"theft"],[163.62,"from"],[163.80,"a"],
+  [163.88,"peer."],[165.04,"Staff"],[165.32,"discover"],[165.78,"a"],[165.86,"resident"],[166.28,"took"],
+  [166.54,"items"],[166.88,"belonging"],[167.34,"to"],[167.44,"another"],[167.76,"resident."],[168.89,"This"],
+  [169.10,"requires"],[169.62,"documenting"],[170.22,"the"],[170.28,"discovery,"],[171.26,"the"],[171.36,"confrontation,"],
+  [172.66,"the"],[172.76,"resident's"],[173.18,"response,"],[174.16,"and"],[174.40,"any"],[174.62,"corrective"],
+  [175.18,"or"],[175.36,"therapeutic"],[175.98,"action"],[176.30,"taken."],[176.78,"Scenario"],[177.30,"five"],
+  [177.82,"is"],[178.02,"running"],[178.30,"away"],[178.62,"threats."],[179.96,"A"],[180.06,"resident"],
+  [180.52,"threatens"],[180.98,"to"],[181.10,"run"],[181.26,"away"],[181.58,"during"],[181.86,"a"],
+  [181.90,"conflict."],[183.32,"Staff"],[183.74,"implement"],[184.20,"safety"],[184.56,"protocols,"],[185.66,"de-escalate"],
+  [186.28,"the"],[186.38,"situation,"],[187.46,"and"],[187.60,"the"],[187.72,"resident"],[188.22,"does"],
+  [188.48,"not"],[188.74,"leave"],[188.94,"the"],[189.04,"facility."],[190.35,"Documentation"],[191.34,"must"],
+  [191.60,"reflect"],[192.06,"safety"],[192.40,"considerations"],[193.22,"clearly."],[195.04,"Scenario"],[195.62,"six"],
+  [196.06,"is"],[196.18,"staff"],[196.58,"shift"],[196.86,"manipulation."],[198.38,"A"],[198.46,"resident"],
+  [198.90,"attempts"],[199.28,"to"],[199.40,"play"],[199.66,"staff"],[199.96,"members"],[200.26,"against"],
+  [200.60,"each"],[200.78,"other"],[201.42,"by"],[201.56,"reporting"],[202.14,"inconsistent"],[202.86,"information"],
+  [203.42,"across"],[203.76,"shift"],[204.06,"changes."],[205.38,"Documentation"],[206.28,"must"],[206.60,"capture"],
+  [207.00,"the"],[207.16,"specific"],[207.68,"statements"],[208.10,"made"],[208.76,"and"],[208.90,"how"],
+  [209.16,"staff"],[209.42,"addressed"],[209.86,"it."],[211.46,"Scenario"],[212.00,"seven"],[212.46,"is"],
+  [212.64,"bedtime"],[213.10,"defiance."],[214.58,"A"],[214.70,"resident"],[215.14,"refuses"],[215.72,"to"],
+  [215.86,"follow"],[216.16,"the"],[216.26,"bedtime"],[216.66,"routine,"],[217.48,"becomes"],[217.86,"argumentative,"],
+  [219.04,"and"],[219.16,"disrupts"],[219.70,"other"],[219.94,"residents."],[221.23,"Staff"],[221.68,"implement"],
+  [222.12,"structured"],[222.66,"limit"],[222.94,"setting."],[224.04,"Your"],[224.20,"note"],[224.52,"must"],
+  [224.80,"capture"],[225.18,"the"],[225.28,"progression"],[225.98,"and"],[226.16,"resolution."],[228.20,"Scenario"],
+  [228.76,"eight"],[229.10,"is"],[229.30,"peer"],[229.60,"bullying."],[230.90,"A"],[230.98,"resident"],
+  [231.48,"is"],[231.58,"observed"],[232.06,"making"],[232.35,"derogatory"],[233.08,"comments"],[233.56,"toward"],
+  [233.74,"a"],[233.82,"peer."],[235.08,"Staff"],[235.46,"intervene,"],[236.42,"separate"],[236.86,"residents,"],
+  [237.76,"and"],[237.88,"address"],[238.26,"behavior"],[238.76,"therapeutically."],[240.38,"Both"],[240.68,"residents"],
+  [241.16,"require"],[241.55,"documentation."],[243.72,"Scenario"],[244.24,"nine"],[244.76,"is"],[244.88,"a"],
+  [244.98,"panic"],[245.32,"attack."],[246.54,"A"],[246.64,"resident"],[247.10,"experiences"],[247.92,"acute"],
+  [248.38,"anxiety"],[248.94,"with"],[249.12,"physical"],[249.52,"symptoms,"],[250.62,"rapid"],[250.98,"breathing,"],
+  [251.73,"tearfulness,"],[252.68,"and"],[252.88,"inability"],[253.38,"to"],[253.58,"speak."],[254.80,"Staff"],
+  [255.22,"implement"],[255.64,"calming"],[256.04,"strategies"],[256.74,"and"],[256.92,"monitor"],[257.34,"for"],
+  [257.50,"safety."],[258.75,"This"],[258.96,"scenario"],[259.52,"requires"],[260.12,"clear"],[260.74,"clinical"],
+  [261.14,"description"],[261.76,"of"],[261.92,"physical"],[262.47,"and"],[262.64,"behavioral"],[263.17,"presentation."],
+  [265.12,"Scenario"],[265.66,"ten"],[266.10,"is"],[266.30,"a"],[266.34,"family"],[266.72,"call"],
+  [266.96,"meltdown."],[268.20,"A"],[268.30,"resident"],[268.70,"becomes"],[269.14,"highly"],[269.48,"dysregulated"],
+  [270.32,"following"],[270.78,"a"],[270.80,"phone"],[271.06,"call"],[271.30,"with"],[271.42,"a"],
+  [271.49,"family"],[271.80,"member."],[272.97,"Staff"],[273.38,"support"],[273.75,"the"],[273.86,"resident"],
+  [274.31,"through"],[274.58,"significant"],[275.24,"emotional"],[275.74,"distress."],[277.18,"Documentation"],[278.08,"must"],
+  [278.32,"capture"],[278.68,"the"],[278.80,"timeline,"],[279.62,"the"],[279.74,"trigger,"],[280.56,"and"],
+  [280.66,"the"],[280.84,"full"],[281.12,"staff"],[281.38,"response."],[282.85,"Scenario"],[283.40,"eleven"],
+  [284.00,"is"],[284.12,"an"],[284.40,"excellent"],[284.86,"progress"],[285.34,"day."],[286.44,"A"],
+  [286.54,"resident"],[287.00,"demonstrates"],[287.66,"exceptional"],[288.38,"emotional"],[288.88,"regulation,"],[290.02,"positive"],
+  [290.54,"peer"],[290.74,"interaction,"],[291.76,"and"],[291.88,"engagement"],[292.44,"with"],[292.60,"programming"],
+  [293.17,"throughout"],[293.52,"the"],[293.64,"shift."],[294.96,"Even"],[295.28,"positive"],[295.78,"days"],
+  [296.08,"require"],[296.60,"thorough"],[296.96,"documentation"],[297.92,"to"],[298.04,"support"],[298.44,"treatment"],
+  [298.80,"progress."],[300.28,"Remember,"],[301.40,"every"],[301.78,"scenario"],[302.28,"you"],[302.42,"document"],
+  [302.92,"here"],[303.32,"reflects"],[303.76,"your"],[303.88,"professional"],[304.50,"skill"],[305.20,"and"],
+  [305.36,"your"],[305.50,"commitment"],[305.98,"to"],[306.08,"the"],[306.20,"residents"],[306.66,"in"],
+  [306.78,"your"],[306.94,"care."],[308.16,"When"],[308.30,"you're"],[308.42,"ready,"],[309.00,"let's"],
+  [309.24,"begin."],[310.68,"Scenario"],[311.32,"one."]
+];
+
+// Slide segments: each segment shows a labelled block of words in the caption panel
+// Defined by word start index in the arrays above (same structure for both voices
+// since word count is identical — only timings differ)
+const CAPTION_SEGMENTS = [
+  { label: 'Welcome',                    start: 0,   end: 24  },
+  { label: 'Why Documentation Matters',  start: 24,  end: 68  },
+  { label: 'About This Training',        start: 68,  end: 141 },
+  { label: 'What Makes a Strong Note',   start: 141, end: 209 },
+  { label: 'What to Avoid',              start: 209, end: 249 },
+  { label: 'Scenarios Overview',         start: 249, end: 301 },
+  { label: 'Scenarios 2 & 3',            start: 301, end: 374 },
+  { label: 'Scenarios 4 & 5',            start: 374, end: 441 },
+  { label: 'Scenarios 6 & 7',            start: 441, end: 508 },
+  { label: 'Scenarios 8 & 9',            start: 508, end: 575 },
+  { label: 'Scenarios 10, 11 & Closing', start: 575, end: 675 }
+];
+
+/* Build the caption DOM — spans for every word, grouped by segment */
+function buildCaptionDOM() {
+  const textEl  = $v('captionText');
+  const labelEl = $v('captionSlideLabel');
+  if (!textEl) return;
+
+  const words = selectedVoice === 'sarah' ? SARAH_WORDS : ALEX_WORDS;
+  textEl.innerHTML = '';
+
+  CAPTION_SEGMENTS.forEach((seg, sIdx) => {
+    const segEl = document.createElement('span');
+    segEl.className = 'caption-segment';
+    segEl.dataset.seg = sIdx;
+    // Only first segment visible initially
+    segEl.style.display = sIdx === 0 ? 'inline' : 'none';
+
+    for (let i = seg.start; i < seg.end && i < words.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'caption-word';
+      span.dataset.wi = i;
+      span.textContent = words[i][1];
+      segEl.appendChild(span);
+      // Add space after each word except the last
+      if (i < seg.end - 1 && i < words.length - 1) {
+        segEl.appendChild(document.createTextNode(' '));
+      }
+    }
+    textEl.appendChild(segEl);
+  });
+
+  labelEl.textContent = CAPTION_SEGMENTS[0].label;
+}
+
+/* Update caption highlight on every timeupdate */
+let captionLastWordIdx   = -1;
+let captionLastSegIdx    = -1;
+
+function updateCaption(currentTime) {
+  const words   = selectedVoice === 'sarah' ? SARAH_WORDS : ALEX_WORDS;
+  const textEl  = $v('captionText');
+  const labelEl = $v('captionSlideLabel');
+  if (!textEl || !words.length) return;
+
+  // Find current word index (last word whose start <= currentTime)
+  let wi = -1;
+  for (let i = words.length - 1; i >= 0; i--) {
+    if (currentTime >= words[i][0]) { wi = i; break; }
+  }
+  if (wi === captionLastWordIdx) return; // nothing changed
+  captionLastWordIdx = wi;
+
+  // Find which segment this word belongs to
+  let segIdx = 0;
+  for (let s = CAPTION_SEGMENTS.length - 1; s >= 0; s--) {
+    if (wi >= CAPTION_SEGMENTS[s].start) { segIdx = s; break; }
+  }
+
+  // Switch segment visibility if changed
+  if (segIdx !== captionLastSegIdx) {
+    captionLastSegIdx = segIdx;
+    const segments = textEl.querySelectorAll('.caption-segment');
+    segments.forEach((el, i) => {
+      el.style.display = i === segIdx ? 'inline' : 'none';
+    });
+    labelEl.textContent = CAPTION_SEGMENTS[segIdx].label;
+    // Remove all highlights from previous segment
+    textEl.querySelectorAll('.caption-word.active, .caption-word.spoken').forEach(el => {
+      el.classList.remove('active','spoken');
+    });
+  }
+
+  // Update highlight within current segment
+  const seg       = CAPTION_SEGMENTS[segIdx];
+  const allWords  = textEl.querySelectorAll('.caption-word');
+  allWords.forEach(span => {
+    const i = parseInt(span.dataset.wi, 10);
+    if (i >= seg.start && i < seg.end) {
+      span.classList.toggle('active',  i === wi);
+      span.classList.toggle('spoken',  i < wi);
+    }
+  });
+
+  // Auto-scroll active word into view inside the panel
+  const activeSpan = textEl.querySelector('.caption-word.active');
+  if (activeSpan) {
+    activeSpan.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
+}
+
+/* Hook into mainAudio timeupdate to drive captions */
+(function initCaptionSync() {
+  const audio = $v('mainAudio');
+  if (!audio) return;
+  audio.addEventListener('timeupdate', () => {
+    updateCaption(audio.currentTime);
+  });
+  // Reset captions when audio is seeked or restarted
+  audio.addEventListener('seeked', () => {
+    captionLastWordIdx = -1;
+    captionLastSegIdx  = -1;
+    updateCaption(audio.currentTime);
+  });
 })();
 
 /* Begin scenarios button */
