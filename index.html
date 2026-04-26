@@ -199,6 +199,17 @@
           </button>
         </div>
         <h2 id="scenarioTitle"></h2>
+        <!-- Scenario animation clip -->
+        <div class="scenario-video-wrap" id="scenarioVideoWrap">
+          <video id="scenarioVideo" class="scenario-video" playsinline muted autoplay loop>
+            <source id="scenarioVideoSrc" src="" type="video/mp4">
+          </video>
+          <div class="scenario-video-overlay" id="scenarioVideoOverlay">
+            <button class="scenario-video-play-btn" id="scenarioVideoPlayBtn" aria-label="Play animation">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
+            </button>
+          </div>
+        </div>
         <div class="scenario-content" id="scenarioContent"></div>
         <!-- Inline mini-progress for scenario read -->
         <div class="scenario-read-bar" id="scenarioReadBar" style="display:none;">

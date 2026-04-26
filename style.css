@@ -470,6 +470,60 @@ body {
 .scenario-content p  { font-size: 0.9375rem; color: var(--color-text); line-height: 1.75; margin-bottom: 0.75rem; }
 .scenario-content strong { color: var(--color-primary); }
 
+/* Scenario animation video */
+.scenario-video-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #111;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+  aspect-ratio: 16 / 9;
+}
+.scenario-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.scenario-video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.25);
+  transition: opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+}
+.scenario-video-overlay.paused {
+  opacity: 1;
+  pointer-events: auto;
+}
+.scenario-video-play-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(139,26,26,0.85);
+  border: 3px solid rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+  backdrop-filter: blur(4px);
+}
+.scenario-video-play-btn:hover {
+  transform: scale(1.1);
+  background: rgba(139,26,26,1);
+}
+.scenario-video-wrap:hover .scenario-video-overlay:not(.paused) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Rubric bar */
 .rubric-bar {
   display: flex;

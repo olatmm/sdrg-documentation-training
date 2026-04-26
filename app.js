@@ -934,6 +934,41 @@ function loadScenario(idx) {
 
   // Reset scenario read button state when navigating to a new scenario
   stopScenarioRead();
+
+  // Load scenario animation clip
+  (function loadScenarioVideo() {
+    const video   = document.getElementById('scenarioVideo');
+    const src     = document.getElementById('scenarioVideoSrc');
+    const overlay = document.getElementById('scenarioVideoOverlay');
+    const playBtn = document.getElementById('scenarioVideoPlayBtn');
+    if (!video || !src) return;
+    const clipNum = idx + 1;
+    src.src = 'scenario-video/s' + clipNum + '.mp4';
+    video.load();
+    video.muted = true;
+    video.loop  = true;
+    overlay.classList.remove('paused');
+    video.play().catch(function() {
+      overlay.classList.add('paused');
+    });
+    video.addEventListener('pause', function onPause() {
+      overlay.classList.add('paused');
+    }, { once: false });
+    video.addEventListener('play', function onPlay() {
+      overlay.classList.remove('paused');
+    }, { once: false });
+    playBtn.onclick = function() {
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    };
+    // Also toggle play/pause on clicking the video itself
+    video.onclick = function() {
+      if (video.paused) { video.play(); } else { video.pause(); }
+    };
+  })();
 }
 
 /* ============================================================
