@@ -101,6 +101,7 @@
           </div>
         </div>
         <audio id="mainAudio" preload="none"></audio>
+        <audio id="scenarioReadAudio" preload="none"></audio>
       </div>
 
       <!-- Key concepts -->
@@ -181,9 +182,20 @@
 
       <!-- Scenario card -->
       <div class="scenario-card" id="scenarioCard">
-        <div class="scenario-tag" id="scenarioTag">Scenario 1</div>
+        <div class="scenario-card-header">
+          <div class="scenario-tag" id="scenarioTag">Scenario 1</div>
+          <button class="scenario-read-btn" id="scenarioReadBtn" aria-label="Play scenario narration">
+            <svg id="scenarioReadIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+            <svg id="scenarioStopIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            <span id="scenarioReadLabel">Read Scenario</span>
+          </button>
+        </div>
         <h2 id="scenarioTitle"></h2>
         <div class="scenario-content" id="scenarioContent"></div>
+        <!-- Inline mini-progress for scenario read -->
+        <div class="scenario-read-bar" id="scenarioReadBar" style="display:none;">
+          <div class="scenario-read-progress" id="scenarioReadProgress"></div>
+        </div>
       </div>
 
       <!-- Rubric quick ref -->

@@ -569,6 +569,85 @@ function loadScenario(idx) {
   // Next button label
   const nextBtn = $v('nextScenarioBtn');
   nextBtn.textContent = idx === TOTAL_SCENARIOS - 1 ? 'Finish Training →' : 'Next Scenario →';
+
+  // Reset scenario read button state when navigating to a new scenario
+  stopScenarioRead();
+}
+
+/* ============================================================
+   SCENARIO READ BUTTON
+   Plays per-scenario audio (alex_sN.mp3 / sarah_sN.mp3)
+   with an inline mini-progress bar on the card.
+   ============================================================ */
+(function initScenarioReadBtn() {
+  const readBtn      = $v('scenarioReadBtn');
+  const readLabel    = $v('scenarioReadLabel');
+  const readIcon     = $v('scenarioReadIcon');
+  const stopIcon     = $v('scenarioStopIcon');
+  const readBar      = $v('scenarioReadBar');
+  const readProgress = $v('scenarioReadProgress');
+  const audio        = $v('scenarioReadAudio');
+
+  if (!readBtn || !audio) return;
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    readProgress.style.width = pct + '%';
+  });
+
+  audio.addEventListener('ended', () => {
+    stopScenarioRead();
+  });
+
+  readBtn.addEventListener('click', () => {
+    if (!audio.paused) {
+      // currently playing — pause it
+      audio.pause();
+      readBtn.classList.remove('playing');
+      readIcon.style.display = 'block';
+      stopIcon.style.display = 'none';
+      readLabel.textContent  = 'Read Scenario';
+    } else {
+      // start / resume
+      const voice = selectedVoice === 'sarah' ? 'sarah' : 'alex';
+      const idx   = currentScenario + 1; // files named alex_s1.mp3 … alex_s11.mp3
+      const src   = `scenario-audio/${voice}_s${idx}.mp3`;
+      if (audio.getAttribute('data-src') !== src) {
+        audio.src = src;
+        audio.setAttribute('data-src', src);
+        readProgress.style.width = '0%';
+      }
+      readBar.style.display = 'block';
+      audio.play().catch(() => {});
+      readBtn.classList.add('playing');
+      readIcon.style.display = 'none';
+      stopIcon.style.display = 'block';
+      readLabel.textContent  = 'Pause';
+    }
+  });
+})();
+
+function stopScenarioRead() {
+  const audio        = $v('scenarioReadAudio');
+  const readBtn      = $v('scenarioReadBtn');
+  const readLabel    = $v('scenarioReadLabel');
+  const readIcon     = $v('scenarioReadIcon');
+  const stopIcon     = $v('scenarioStopIcon');
+  const readBar      = $v('scenarioReadBar');
+  const readProgress = $v('scenarioReadProgress');
+  if (!audio) return;
+  audio.pause();
+  audio.removeAttribute('src');
+  audio.removeAttribute('data-src');
+  if (readBtn) {
+    readBtn.classList.remove('playing');
+    readIcon.style.display = 'block';
+    stopIcon.style.display = 'none';
+    readLabel.textContent  = 'Read Scenario';
+  }
+  if (readBar)      readBar.style.display      = 'none';
+  if (readProgress) readProgress.style.width   = '0%';
 }
 
 /* Word counter */
