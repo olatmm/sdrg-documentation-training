@@ -16,6 +16,14 @@ const EJS_TEMPLATE = 'template_sdrg_cert';
 const EJS_PUBLIC   = 'YOUR_EMAILJS_PUBLIC_KEY';
 const ADMIN_EMAIL  = 'admin@sannidayresidential.org';
 
+/* ---------- per-scenario audio timestamps (seconds) ----------
+   The narration intro covers all 11 scenarios in order.
+   These are the exact times each scenario is introduced.
+   Source: word-level transcription of both audio files.
+*/
+const ALEX_SCENARIO_TS  = [111.0, 133.8, 152.3, 171.9, 190.4, 207.1, 225.2, 242.1, 258.2, 280.3, 301.8];
+const SARAH_SCENARIO_TS = [105.7, 126.7, 145.1, 163.3, 180.0, 195.6, 212.6, 228.8, 245.0, 266.0, 286.4];
+
 /* ---------- state ---------- */
 let selectedVoice    = null;
 let currentScenario  = 0;
@@ -25,6 +33,7 @@ let gradedNote       = '';
 let sigPainting      = false;
 let sigCtx           = null;
 let sigHasData       = false;
+let autoSyncEnabled  = true;  // auto-advance scenarios with audio
 
 const PASS_SCORE     = 8;
 const TOTAL_SCENARIOS= 11;
@@ -419,10 +428,84 @@ function startTraining(resume) {
 
 /* Begin scenarios button */
 $v('beginScenariosBtn').addEventListener('click', () => {
-  $v('mainAudio').pause();
+  const introAudio = $v('mainAudio');
+  const currentTime = introAudio.currentTime;
+  // Transfer playback state to scenario audio
+  introAudio.pause();
   showScreen('scenario');
   loadScenario(0);
+  // Carry over the audio position so scenario player continues from same point
+  const sa = $v('scenarioAudio');
+  if (sa && currentTime > 0) {
+    sa.addEventListener('loadedmetadata', () => {
+      sa.currentTime = currentTime;
+    }, { once: true });
+  }
 });
+
+/* ============================================================
+   SCENARIO AUDIO PLAYER (sticky bar on scenario screen)
+   ============================================================ */
+(function initScenarioAudio() {
+  const playBtn2    = $v('playBtn2');
+  const playIcon2   = $v('play-icon2');
+  const pauseIcon2  = $v('pause-icon2');
+  const progFill2   = $v('progressFill2');
+  const progThumb2  = $v('progressThumb2');
+  const progTrack2  = $v('progressTrack2');
+  const audioTime2  = $v('audioTime2');
+  const syncBadge   = $v('autoSyncBadge');
+
+  // We reuse mainAudio element but mirror controls to scenario bar
+  const audio = $v('mainAudio');
+
+  playBtn2.addEventListener('click', () => {
+    audio.paused ? audio.play().catch(()=>{}) : audio.pause();
+  });
+
+  audio.addEventListener('play',  () => {
+    playIcon2.style.display  = 'none';
+    pauseIcon2.style.display = 'block';
+  });
+  audio.addEventListener('pause', () => {
+    playIcon2.style.display  = 'block';
+    pauseIcon2.style.display = 'none';
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    progFill2.style.width  = pct + '%';
+    progThumb2.style.left  = pct + '%';
+    audioTime2.textContent = fmt2(audio.currentTime) + ' / ' + fmt2(audio.duration);
+
+    // Auto-advance scenario based on timestamp
+    if (!autoSyncEnabled) return;
+    const ts = selectedVoice === 'alex' ? ALEX_SCENARIO_TS : SARAH_SCENARIO_TS;
+    let targetScenario = currentScenario;
+    for (let i = ts.length - 1; i >= 0; i--) {
+      if (audio.currentTime >= ts[i]) { targetScenario = i; break; }
+    }
+    if (targetScenario !== currentScenario && targetScenario > currentScenario) {
+      // Only auto-advance forward, never back
+      loadScenario(targetScenario);
+      syncBadge.classList.add('synced');
+      setTimeout(() => syncBadge.classList.remove('synced'), 1500);
+    }
+  });
+
+  progTrack2.addEventListener('click', e => {
+    if (!audio.duration) return;
+    const r = progTrack2.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - r.left) / r.width) * audio.duration;
+    autoSyncEnabled = true;
+  });
+
+  function fmt2(s) {
+    s = Math.floor(s || 0);
+    return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+  }
+})();
 
 /* ============================================================
    SAVE PROGRESS
@@ -444,6 +527,13 @@ function doSave() {
 /* ============================================================
    SCENARIO ENGINE
    ============================================================ */
+function goToPrevScenario() {
+  if (currentScenario > 0) {
+    autoSyncEnabled = false; // disable auto-sync when navigating manually
+    loadScenario(currentScenario - 1);
+  }
+}
+
 function loadScenario(idx) {
   currentScenario = idx;
   const sc = SCENARIOS[idx];
@@ -468,6 +558,12 @@ function loadScenario(idx) {
   $v('exampleArea').style.display      = 'none';
   $v('showExampleBtn').textContent     = 'Show Example Answer';
 
+  // Update Prev buttons state
+  const prevBtn     = $v('prevScenarioBtn');
+  const prevBtnPost = $v('prevScenarioBtnPost');
+  if (prevBtn)     prevBtn.disabled     = idx === 0;
+  if (prevBtnPost) prevBtnPost.disabled = idx === 0;
+
   // Next button label
   const nextBtn = $v('nextScenarioBtn');
   nextBtn.textContent = idx === TOTAL_SCENARIOS - 1 ? 'Finish Training →' : 'Next Scenario →';
@@ -489,6 +585,10 @@ $v('submitNoteBtn').addEventListener('click', () => {
   }
   gradeNote(note, currentScenario);
 });
+
+/* Prev buttons */
+$v('prevScenarioBtn').addEventListener('click', goToPrevScenario);
+$v('prevScenarioBtnPost').addEventListener('click', goToPrevScenario);
 
 /* Revise & resubmit */
 $v('reviseBtn').addEventListener('click', () => {
@@ -517,6 +617,7 @@ $v('showExampleBtn').addEventListener('click', () => {
 
 /* Next scenario */
 $v('nextScenarioBtn').addEventListener('click', () => {
+  autoSyncEnabled = true; // re-enable sync when moving forward
   if (currentScenario < TOTAL_SCENARIOS - 1) {
     showFollowup(currentScenario);
   } else {

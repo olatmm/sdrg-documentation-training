@@ -582,3 +582,36 @@ body {
 @media (max-width: 400px) {
   .concepts-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================
+   SCENARIO SCREEN AUDIO BAR + AUTO-SYNC BADGE
+   ============================ */
+.audio-bar-scenario {
+  position: sticky;
+  top: 57px;
+  z-index: 90;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  margin-bottom: 0;
+  background: var(--color-surface);
+  border-bottom: 1.5px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+.audio-sync-badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.audio-sync-badge.synced {
+  color: var(--color-success);
+  background: var(--color-success-light);
+  border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+}
