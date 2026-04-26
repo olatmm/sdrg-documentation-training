@@ -437,7 +437,7 @@ function startTraining(resume) {
 // Word arrays: [start_time, "word"]
 const ALEX_WORDS = [
   [0.12,"Welcome"],[0.54,"to"],[0.66,"the"],[0.82,"scenario-based"],[1.89,"documentation"],[2.80,"exercise"],
-  [3.90,"for"],[4.16,"Sunny"],[4.56,"Day"],[5.04,"Residential"],[5.72,"Group."],[6.76,"My"],
+  [3.90,"for"],[4.16,"Sanni"],[4.56,"Day"],[5.04,"Residential"],[5.72,"Group."],[6.76,"My"],
   [6.92,"name"],[7.08,"is"],[7.28,"Alex,"],[7.96,"and"],[8.08,"I'll"],[8.22,"be"],
   [8.38,"guiding"],[8.78,"you"],[8.92,"through"],[9.08,"this"],[9.28,"training"],[9.62,"today."],
   [10.76,"Documentation"],[11.72,"is"],[11.90,"one"],[12.00,"of"],[12.08,"the"],[12.22,"most"],
@@ -553,7 +553,7 @@ const ALEX_WORDS = [
 
 const SARAH_WORDS = [
   [0.10,"Welcome"],[0.52,"to"],[0.64,"the"],[0.74,"scenario-based"],[1.72,"documentation"],[2.50,"exercise"],
-  [3.14,"for"],[3.32,"Sunny"],[3.66,"Day"],[3.90,"Residential"],[4.46,"Group."],[5.38,"My"],
+  [3.14,"for"],[3.32,"Sanni"],[3.66,"Day"],[3.90,"Residential"],[4.46,"Group."],[5.38,"My"],
   [5.54,"name"],[5.68,"is"],[5.84,"Sarah,"],[6.48,"and"],[6.58,"I'll"],[6.70,"be"],
   [6.84,"guiding"],[7.16,"you"],[7.30,"through"],[7.52,"this"],[7.72,"training"],[8.04,"today."],
   [9.22,"Documentation"],[10.18,"is"],[10.32,"one"],[10.42,"of"],[10.54,"the"],[10.68,"most"],
