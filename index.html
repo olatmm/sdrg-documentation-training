@@ -154,6 +154,25 @@
       </div>
     </header>
 
+    <!-- Sticky audio bar for scenario screen -->
+    <div class="audio-bar audio-bar-scenario">
+      <button class="play-btn" id="playBtn2" aria-label="Play/Pause">
+        <svg id="play-icon2" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+        <svg id="pause-icon2" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <div class="audio-track">
+        <div class="audio-label-row">
+          <span id="audioLabel2">Instructor Narration</span>
+          <span id="audioTime2">0:00 / 0:00</span>
+        </div>
+        <div class="progress-track" id="progressTrack2">
+          <div class="progress-fill" id="progressFill2"></div>
+          <div class="progress-thumb" id="progressThumb2"></div>
+        </div>
+      </div>
+      <span class="audio-sync-badge" id="autoSyncBadge">🔄 Auto-Sync</span>
+    </div>
+
     <div class="scenario-body">
       <!-- Progress bar -->
       <div class="scenario-progress-bar">

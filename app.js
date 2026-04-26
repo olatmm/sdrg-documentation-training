@@ -459,6 +459,8 @@ $v('beginScenariosBtn').addEventListener('click', () => {
   // We reuse mainAudio element but mirror controls to scenario bar
   const audio = $v('mainAudio');
 
+  if (!playBtn2 || !audio) return; // guard: elements not in DOM yet
+
   playBtn2.addEventListener('click', () => {
     audio.paused ? audio.play().catch(()=>{}) : audio.pause();
   });
