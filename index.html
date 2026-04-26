@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation Training — Sanni Day Residential Group</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       VOICE SELECTION SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen active" id="voice-screen">
+    <div class="voice-select-container">
+      <img src="logo.png" alt="Sanni Day Residential Group" class="voice-logo" />
+      <h1>Scenario-Based<br/>Documentation Training</h1>
+      <p class="voice-sub">SANNI DAY RESIDENTIAL GROUP · LEVEL III</p>
+      <p class="voice-desc">Choose your instructor. They will guide you through 11 real-life residential scenarios and help you build professional documentation skills.</p>
+      <div class="voice-cards">
+        <button class="voice-card" id="chooseAlex" aria-label="Choose Alex">
+          <div class="voice-avatar male">
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="voice-info">
+            <span class="voice-name">Alex</span>
+            <span class="voice-role">Male Instructor</span>
+            <span class="voice-style">Clear · Direct · Professional</span>
+          </div>
+          <div class="voice-check">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </button>
+        <button class="voice-card" id="chooseSarah" aria-label="Choose Sarah">
+          <div class="voice-avatar female">
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#fff"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="voice-info">
+            <span class="voice-name">Sarah</span>
+            <span class="voice-role">Female Instructor</span>
+            <span class="voice-style">Warm · Engaging · Supportive</span>
+          </div>
+          <div class="voice-check">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </button>
+      </div>
+      <p class="voice-hint" id="voice-hint">Select an instructor above to continue</p>
+
+      <!-- Resume banner -->
+      <div id="resume-banner" style="display:none;" class="resume-banner">
+        <p id="resume-detail"></p>
+        <div class="resume-actions">
+          <button class="btn-primary" id="resume-btn">Resume Where I Left Off</button>
+          <button class="btn-ghost" id="start-fresh-btn">Start Over</button>
+        </div>
+      </div>
+
+      <button class="btn-primary btn-lg" id="start-btn" disabled>Begin Training →</button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       INTRO / NARRATION SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen" id="intro-screen">
+    <header class="site-header">
+      <img src="logo.png" alt="SDRG" class="header-logo" />
+      <div class="header-center">
+        <span class="header-title">Documentation Training</span>
+      </div>
+      <div class="header-right">
+        <span class="instructor-chip" id="instructorChip" style="display:none;"></span>
+        <button class="btn-ghost btn-sm" id="saveBtn" style="display:none;">💾 Save</button>
+      </div>
+    </header>
+
+    <div class="intro-body">
+      <div class="intro-hero">
+        <div class="intro-icon">📋</div>
+        <h1>Why Documentation Matters</h1>
+        <p class="intro-lead">Every note you write becomes part of a resident's clinical record. Listen to your instructor's overview before beginning the scenarios.</p>
+      </div>
+
+      <!-- Audio player -->
+      <div class="audio-bar">
+        <button class="play-btn" id="playBtn" aria-label="Play/Pause">
+          <svg id="play-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          <svg id="pause-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        </button>
+        <div class="audio-track">
+          <div class="audio-label-row">
+            <span id="audioLabel">Instructor Overview</span>
+            <span id="audioTime">0:00 / 0:00</span>
+          </div>
+          <div class="progress-track" id="progressTrack">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-thumb" id="progressThumb"></div>
+          </div>
+        </div>
+        <audio id="mainAudio" preload="none"></audio>
+      </div>
+
+      <!-- Key concepts -->
+      <div class="concepts-grid">
+        <div class="concept-card">
+          <div class="concept-icon">👁</div>
+          <h3>Observed Behavior</h3>
+          <p>Describe what you saw — specific actions, statements, physical presentation — in objective, neutral language.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">🤝</div>
+          <h3>Staff Interventions</h3>
+          <p>Document exactly what you did in response — de-escalation, coping prompts, limit-setting, safety monitoring.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">🔄</div>
+          <h3>Resident Response</h3>
+          <p>How did the resident react to your interventions? Resistance, receptiveness, partial compliance — capture it all.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">📈</div>
+          <h3>Progress & Needs</h3>
+          <p>End every note with treatment relevance — what improved, what continues to need clinical support.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div><strong>Avoid vague language.</strong> "Client was acting out" or "everything was fine" has no clinical value. Describe what you saw and what you did.</div>
+      </div>
+
+      <div class="intro-footer">
+        <button class="btn-primary btn-lg" id="beginScenariosBtn">Begin Scenario 1 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       SCENARIO SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen" id="scenario-screen">
+    <header class="site-header">
+      <img src="logo.png" alt="SDRG" class="header-logo" />
+      <div class="header-center">
+        <span class="header-title">Documentation Training</span>
+        <span class="scenario-progress-label" id="scenarioProgressLabel">Scenario 1 of 11</span>
+      </div>
+      <div class="header-right">
+        <span class="instructor-chip" id="instructorChip2"></span>
+        <button class="btn-ghost btn-sm" id="saveBtn2">💾 Save</button>
+      </div>
+    </header>
+
+    <div class="scenario-body">
+      <!-- Progress bar -->
+      <div class="scenario-progress-bar">
+        <div class="scenario-progress-fill" id="scenarioProgressFill"></div>
+      </div>
+
+      <!-- Scenario card -->
+      <div class="scenario-card" id="scenarioCard">
+        <div class="scenario-tag" id="scenarioTag">Scenario 1</div>
+        <h2 id="scenarioTitle"></h2>
+        <div class="scenario-content" id="scenarioContent"></div>
+      </div>
+
+      <!-- Rubric quick ref -->
+      <div class="rubric-bar">
+        <span class="rubric-label">Scoring Rubric (10 pts):</span>
+        <span class="rubric-item">Behavior (2)</span>
+        <span class="rubric-item">Interventions (2)</span>
+        <span class="rubric-item">Resident Response (2)</span>
+        <span class="rubric-item">Professional Language (2)</span>
+        <span class="rubric-item">Progress/Needs (2)</span>
+      </div>
+
+      <!-- Writing area -->
+      <div class="write-area">
+        <label class="write-label" for="noteInput">Your Documentation Note <span class="required">*</span></label>
+        <p class="write-hint">Write your professional shift note below. Aim for 5–8 sentences covering all rubric categories.</p>
+        <textarea id="noteInput" class="note-textarea" placeholder="Begin your documentation note here...&#10;&#10;Example opening: Resident returned from school at approximately 3:15 PM visibly upset and tearful..."></textarea>
+        <div class="write-meta">
+          <span id="wordCount">0 words</span>
+          <span id="minWords" class="min-words">Minimum: 40 words recommended</span>
+        </div>
+      </div>
+
+      <!-- Feedback area (hidden until graded) -->
+      <div class="feedback-area" id="feedbackArea" style="display:none;">
+        <div class="feedback-header">
+          <div class="score-display" id="scoreDisplay"></div>
+          <div class="feedback-title" id="feedbackTitle"></div>
+        </div>
+        <div class="feedback-breakdown" id="feedbackBreakdown"></div>
+        <div class="feedback-text" id="feedbackText"></div>
+        <div class="example-toggle">
+          <button class="btn-ghost btn-sm" id="showExampleBtn">Show Example Answer</button>
+        </div>
+        <div class="example-area" id="exampleArea" style="display:none;">
+          <div class="example-label">✅ Acceptable Answer</div>
+          <div class="example-text" id="exampleAcceptable"></div>
+          <div class="example-label bad">❌ Unacceptable Answer</div>
+          <div class="example-text bad" id="exampleUnacceptable"></div>
+          <div class="example-why" id="exampleWhy"></div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="scenario-actions" id="scenarioActions">
+        <button class="btn-primary" id="submitNoteBtn">Submit for Grading →</button>
+      </div>
+      <div class="scenario-actions" id="postGradeActions" style="display:none;">
+        <button class="btn-secondary" id="reviseBtn">Revise & Resubmit</button>
+        <button class="btn-primary" id="nextScenarioBtn">Next Scenario →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       FOLLOW-UP QUESTIONS SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen" id="followup-screen">
+    <header class="site-header">
+      <img src="logo.png" alt="SDRG" class="header-logo" />
+      <div class="header-center"><span class="header-title">Trainer Follow-Up</span></div>
+      <div class="header-right"><span class="instructor-chip" id="instructorChip3"></span></div>
+    </header>
+    <div class="followup-body">
+      <div class="followup-icon">💬</div>
+      <h2 id="followupScenarioTitle"></h2>
+      <p class="followup-sub">Review these follow-up questions with your trainer or supervisor to deepen your understanding of this scenario.</p>
+      <ol class="followup-questions" id="followupQuestions"></ol>
+      <div class="advanced-prompt" id="advancedPrompt">
+        <div class="adv-icon">🤖</div>
+        <div><strong>Advanced Challenge:</strong> <span id="advancedPromptText"></span></div>
+      </div>
+      <div class="followup-actions">
+        <button class="btn-primary" id="continueFromFollowup">Continue →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       ACKNOWLEDGMENT SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen" id="ack-screen">
+    <header class="site-header">
+      <img src="logo.png" alt="SDRG" class="header-logo" />
+      <div class="header-center"><span class="header-title">Training Acknowledgment</span></div>
+    </header>
+    <div class="ack-container">
+      <h2>Training Acknowledgment</h2>
+      <p class="ack-intro">By signing below, you confirm that you have completed all 11 documentation scenarios and understand the professional documentation standards required at Sanni Day Residential Group.</p>
+      <div class="ack-statements">
+        <label class="checkbox-label"><input type="checkbox" id="ackCheck1" required /><span>I completed all 11 scenario-based documentation exercises and received feedback on each note.</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="ackCheck2" required /><span>I understand the six elements required in every professional shift note: presentation, observed behavior, staff interventions, resident response, shift outcome, and continued treatment needs.</span></label>
+        <label class="checkbox-label"><input type="checkbox" id="ackCheck3" required /><span>I commit to using objective, clinical language in all documentation I complete at Sanni Day Residential Group.</span></label>
+      </div>
+      <form id="ackForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Name <span class="required">*</span></label>
+            <input type="text" id="staffName" placeholder="Your full name" required />
+          </div>
+          <div class="form-group">
+            <label>Job Title <span class="required">*</span></label>
+            <input type="text" id="staffTitle" placeholder="e.g. Direct Care Staff" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Date <span class="required">*</span></label>
+          <input type="date" id="staffDate" required />
+        </div>
+        <div class="sig-group">
+          <label>Signature <span class="required">*</span></label>
+          <p class="sig-hint">Sign using your mouse, finger, or stylus below.</p>
+          <div class="sig-canvas-wrap sig-dark"><canvas id="sigCanvas" width="700" height="140"></canvas><button type="button" class="sig-clear" id="clearSig">Clear</button></div>
+          <div id="sigError" class="field-error hidden">Please provide your signature.</div>
+        </div>
+        <div id="formError" class="form-error hidden">Please complete all required fields and sign.</div>
+        <button type="submit" class="btn-primary btn-submit">Submit &amp; Get Certificate</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════
+       COMPLETION / CERTIFICATE SCREEN
+  ════════════════════════════════════════════ -->
+  <section class="screen" id="complete-screen">
+    <div class="complete-container">
+      <div class="complete-icon">🏆</div>
+      <h2>Training Complete!</h2>
+      <p class="complete-sub">You have successfully completed all 11 documentation scenarios.</p>
+      <div class="certificate" id="certificate">
+        <div class="cert-header">
+          <img src="logo.png" alt="SDRG" class="cert-logo" />
+          <div class="cert-header-text">
+            <div class="cert-org">Sanni Day Residential Group</div>
+            <div class="cert-sub-org">Level III Residential Group Home · Gastonia, NC</div>
+          </div>
+        </div>
+        <div class="cert-body">
+          <div class="cert-badge">📋</div>
+          <div class="cert-presents">This certifies that</div>
+          <div class="cert-name" id="certName">Staff Member</div>
+          <div class="cert-course">has successfully completed</div>
+          <div class="cert-course-name">Scenario-Based Documentation Training</div>
+          <div class="cert-meta">
+            <span id="certDate"></span>
+            <span id="certScore"></span>
+          </div>
+        </div>
+        <div class="cert-sig-area">
+          <div class="cert-sig-line"><span>Ashley K. Sanni, Director</span></div>
+        </div>
+      </div>
+      <div class="complete-actions">
+        <button class="btn-primary" id="downloadCertBtn" onclick="downloadCertPDF()">⬇ Download Certificate (PDF)</button>
+        <button class="btn-secondary" onclick="restartTraining()">Retake Training</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
