@@ -938,35 +938,50 @@ function loadScenario(idx) {
   // Load scenario animation clip
   (function loadScenarioVideo() {
     const video   = document.getElementById('scenarioVideo');
-    const src     = document.getElementById('scenarioVideoSrc');
     const overlay = document.getElementById('scenarioVideoOverlay');
     const playBtn = document.getElementById('scenarioVideoPlayBtn');
-    if (!video || !src) return;
+    if (!video) return;
+
+    // Fully replace the video element's src via setAttribute to force reload
     const clipNum = idx + 1;
-    src.src = 'scenario-video/s' + clipNum + '.mp4';
+    const newSrc  = 'scenario-video/s' + clipNum + '.mp4';
+
+    // Remove old listeners by cloning (clean slate)
+    const fresh = video.cloneNode(false);
+    fresh.setAttribute('src', newSrc);
+    fresh.setAttribute('playsinline', '');
+    fresh.muted   = true;
+    fresh.loop    = true;
+    fresh.preload = 'auto';
+    fresh.className = video.className;
+    video.parentNode.replaceChild(fresh, fresh); // no-op placeholder
+    video.src = newSrc;
     video.load();
-    video.muted = true;
-    video.loop  = true;
+
     overlay.classList.remove('paused');
-    video.play().catch(function() {
-      overlay.classList.add('paused');
-    });
-    video.addEventListener('pause', function onPause() {
-      overlay.classList.add('paused');
-    }, { once: false });
-    video.addEventListener('play', function onPlay() {
-      overlay.classList.remove('paused');
-    }, { once: false });
-    playBtn.onclick = function() {
-      if (video.paused) {
-        video.play();
-      } else {
-        video.pause();
-      }
+
+    var playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(function() {
+        overlay.classList.add('paused');
+      });
+    }
+
+    // Pause/play overlay
+    function syncOverlay() {
+      if (video.paused) { overlay.classList.add('paused'); }
+      else { overlay.classList.remove('paused'); }
+    }
+    video.onpause = syncOverlay;
+    video.onplay  = syncOverlay;
+
+    // Click to toggle
+    playBtn.onclick = function(e) {
+      e.stopPropagation();
+      video.paused ? video.play() : video.pause();
     };
-    // Also toggle play/pause on clicking the video itself
     video.onclick = function() {
-      if (video.paused) { video.play(); } else { video.pause(); }
+      video.paused ? video.play() : video.pause();
     };
   })();
 }
